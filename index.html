@@ -1,0 +1,564 @@
+<!-- index.html — deploy ke GitHub Pages (atau Netlify/Firebase Hosting).
+     JANGAN diupload ke Apps Script — halaman ini harus di origin HTTPS asli
+     supaya kamera bisa diakses browser.
+
+     QR tiap staff berisi URL ini + ?staff=STF001 (permanen, bisa dicetak & dipakai ulang) -->
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Presensi Staff</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg: #F4F5F2;
+    --surface: #FFFFFF;
+    --ink: #17241D;
+    --ink-muted: #6B776E;
+    --line: #E4E7E1;
+    --primary: #1F5C4C;
+    --primary-dark: #163F34;
+    --primary-tint: #E7F0EC;
+    --success: #2F8F5B;
+    --success-tint: #E9F6EE;
+    --error: #C1443C;
+    --error-tint: #FBEBEA;
+    --radius-lg: 22px;
+    --radius-md: 14px;
+  }
+
+  *{ box-sizing: border-box; }
+
+  html, body{
+    margin:0; padding:0; min-height:100%;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body{
+    display:flex; align-items:center; justify-content:center;
+    min-height:100vh; padding: 24px 16px;
+  }
+
+  .app{
+    width:100%; max-width: 400px;
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 1px 2px rgba(23,36,29,0.04), 0 12px 32px rgba(23,36,29,0.08);
+    overflow:hidden;
+    min-height: 560px;
+    display:flex; flex-direction:column;
+  }
+
+  .topbar{
+    display:flex; align-items:center; gap:12px;
+    padding: 20px 20px 4px;
+  }
+  .topbar button{
+    background:none; border:none; font-size:20px; color: var(--ink);
+    cursor:pointer; padding:4px; line-height:1; border-radius:8px;
+  }
+  .topbar button:focus-visible{ outline:2px solid var(--primary); }
+  .topbar h1{
+    font-size:15px; font-weight:600; letter-spacing:0.01em; margin:0;
+    color: var(--ink-muted);
+  }
+
+  .screen{
+    display:none;
+    flex:1;
+    flex-direction:column;
+    padding: 28px 24px 24px;
+  }
+  .screen.active{ display:flex; }
+
+  /* ── Ikon status bulat ───────────────────────────────── */
+  .status-icon{
+    width:76px; height:76px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    margin: 8px auto 20px;
+  }
+  .status-icon.success{ background: var(--success-tint); color: var(--success); }
+  .status-icon.error{ background: var(--error-tint); color: var(--error); }
+  .status-icon svg{ width:34px; height:34px; }
+
+  h2.title{
+    text-align:center; font-size:20px; font-weight:700;
+    margin: 0 0 6px; letter-spacing: -0.01em;
+  }
+  p.subtitle{
+    text-align:center; color: var(--ink-muted); font-size:14.5px;
+    line-height:1.5; margin: 0 0 24px;
+  }
+
+  /* ── Kartu info sesi ─────────────────────────────────── */
+  .info-card{
+    background: var(--bg); border-radius: var(--radius-md);
+    padding: 16px 18px; margin-bottom: 14px;
+    display:flex; align-items:center; gap:12px;
+    font-size: 14.5px;
+  }
+  .info-card .ic{ font-size:18px; width:22px; text-align:center; }
+
+  .net-row{
+    display:flex; align-items:center; gap:10px;
+    padding: 14px 18px; border-radius: var(--radius-md);
+    background: var(--bg); font-size:14.5px; margin-bottom: 8px;
+  }
+  .net-dot{ width:9px; height:9px; border-radius:50%; background: var(--ink-muted); flex-shrink:0; }
+  .net-dot.ok{ background: var(--success); }
+  .net-dot.bad{ background: var(--error); }
+  .net-row.bad{ color: var(--error); }
+
+  .spacer{ flex:1; }
+
+  /* ── Tombol ──────────────────────────────────────────── */
+  .btn{
+    display:block; width:100%; border:none; border-radius: 14px;
+    padding: 16px; font-size:15.5px; font-weight:600;
+    font-family:inherit; cursor:pointer; text-align:center;
+    transition: transform .08s ease, opacity .15s ease;
+  }
+  .btn:active{ transform: scale(0.985); }
+  .btn:disabled{ opacity:0.45; cursor:not-allowed; }
+  .btn-primary{ background: var(--primary); color:#fff; }
+  .btn-primary:hover:not(:disabled){ background: var(--primary-dark); }
+  .btn-ghost{ background: var(--bg); color: var(--ink); margin-top:10px; }
+  .btn-row{ display:flex; gap:10px; }
+  .btn-row .btn{ flex:1; }
+
+  /* ── Identitas staff ─────────────────────────────────── */
+  .identity-card{
+    background: var(--primary-tint); border-radius: var(--radius-md);
+    padding: 22px; text-align:center; margin-bottom: 24px;
+  }
+  .identity-card .nama{ font-size:21px; font-weight:700; color: var(--primary-dark); }
+  .identity-card .staff-id{ font-size:13.5px; color: var(--ink-muted); margin-top:4px; }
+
+  /* ── Kamera ──────────────────────────────────────────── */
+  .cam-wrap{
+    position:relative; border-radius: var(--radius-md); overflow:hidden;
+    background:#0E1712; aspect-ratio: 3/4; margin-bottom:16px;
+  }
+  .cam-wrap video, .cam-wrap img, .cam-wrap canvas{
+    width:100%; height:100%; object-fit:cover; display:block;
+  }
+  .cam-wrap canvas{ display:none; }
+
+  .shutter{
+    width:68px; height:68px; border-radius:50%;
+    border: 4px solid var(--surface); background: var(--primary);
+    box-shadow: 0 0 0 2px var(--primary);
+    margin: 4px auto 0; cursor:pointer; display:flex;
+    align-items:center; justify-content:center;
+  }
+  .shutter:active{ transform: scale(0.94); }
+
+  /* ── Proses / checklist ──────────────────────────────── */
+  .checklist{ margin: 6px 0 8px; }
+  .check-item{
+    display:flex; align-items:center; gap:12px;
+    padding: 11px 4px; font-size:14.5px; color: var(--ink-muted);
+  }
+  .check-item .dot{
+    width:22px; height:22px; border-radius:50%; border:2px solid var(--line);
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    transition: all .25s ease;
+  }
+  .check-item.done{ color: var(--ink); }
+  .check-item.done .dot{ background: var(--success); border-color: var(--success); }
+  .check-item.done .dot svg{ width:12px; height:12px; }
+
+  /* ── Ringkasan sukses ────────────────────────────────── */
+  .summary{
+    background: var(--bg); border-radius: var(--radius-md);
+    padding: 18px; margin: 20px 0; text-align:center;
+  }
+  .summary .dt{ font-size:14.5px; color: var(--ink-muted); }
+  .summary .status-line{
+    margin-top:12px; display:flex; align-items:center; justify-content:center; gap:8px;
+    font-weight:700; letter-spacing:0.02em; font-size:14px; color: var(--success);
+  }
+  .summary .status-line .dot{ width:8px; height:8px; border-radius:50%; background: var(--success); }
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+
+  <!-- ============ LOADING ============ -->
+  <div class="screen active" id="screen-loading">
+    <div class="spacer"></div>
+    <p class="subtitle">Memuat sesi presensi…</p>
+    <div class="spacer"></div>
+  </div>
+
+  <!-- ============ QR TIDAK VALID / STAFF TIDAK DITEMUKAN ============ -->
+  <div class="screen" id="screen-invalid">
+    <div class="spacer"></div>
+    <div class="status-icon error">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M6 6L18 18M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+    </div>
+    <h2 class="title">QR Tidak Valid</h2>
+    <p class="subtitle" id="invalid-message">QR Code ini tidak dikenali. Minta kartu QR presensi yang baru ke admin.</p>
+    <div class="spacer"></div>
+  </div>
+
+  <!-- ============ SESI DITEMUKAN ============ -->
+  <div class="screen" id="screen-session">
+    <div class="topbar"><h1>PRESENSI STAFF</h1></div>
+    <div class="spacer"></div>
+
+    <div class="status-icon success">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M4 12.5L9.5 18L20 6" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <h2 class="title">QR Terdeteksi</h2>
+    <p class="subtitle">Sesi presensi ditemukan</p>
+
+    <div class="info-card"><span class="ic">📅</span><span id="session-date">–</span></div>
+    <div class="info-card" style="margin-bottom:14px;"><span class="ic">🕐</span><span id="session-time">–</span></div>
+
+    <div class="net-row" id="net-row">
+      <span class="net-dot" id="net-dot"></span>
+      <span id="net-text">Memeriksa jaringan…</span>
+    </div>
+
+    <div class="spacer"></div>
+    <button class="btn btn-primary" id="btn-start" disabled>Mulai Presensi</button>
+  </div>
+
+  <!-- ============ KONFIRMASI IDENTITAS ============ -->
+  <div class="screen" id="screen-confirm">
+    <div class="topbar"><h1>PRESENSI</h1></div>
+    <div class="spacer"></div>
+
+    <p class="subtitle" style="margin-bottom:4px;">Halo!</p>
+    <div class="identity-card">
+      <div class="nama" id="confirm-nama">–</div>
+      <div class="staff-id" id="confirm-staff-id"></div>
+    </div>
+    <p class="subtitle">Pastikan data di atas sudah benar sebelum lanjut mengambil foto.</p>
+
+    <div class="spacer"></div>
+    <button class="btn btn-primary" id="btn-to-camera">Lanjut ke Foto →</button>
+  </div>
+
+  <!-- ============ KAMERA ============ -->
+  <div class="screen" id="screen-camera">
+    <div class="topbar">
+      <button id="btn-back-camera" aria-label="Kembali">←</button>
+      <h1>FOTO PRESENSI</h1>
+    </div>
+
+    <div class="cam-wrap">
+      <video id="video" autoplay playsinline muted></video>
+    </div>
+
+    <p class="subtitle">Pastikan wajah terlihat jelas di dalam kamera.</p>
+    <div class="spacer"></div>
+    <div class="shutter" id="btn-capture" role="button" aria-label="Ambil foto">
+      <div style="width:52px;height:52px;border-radius:50%;background:#fff;"></div>
+    </div>
+    <p id="cam-status" style="text-align:center;color:var(--error);font-size:13.5px;margin-top:14px;"></p>
+  </div>
+
+  <!-- ============ PREVIEW FOTO ============ -->
+  <div class="screen" id="screen-preview">
+    <div class="topbar"><h1>FOTO PRESENSI</h1></div>
+
+    <div class="cam-wrap">
+      <img id="photo-preview" alt="Foto presensi">
+    </div>
+
+    <p class="subtitle">Foto sudah cukup jelas?</p>
+    <div class="spacer"></div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" id="btn-retake">Ulangi</button>
+      <button class="btn btn-primary" id="btn-use-photo">Gunakan Foto</button>
+    </div>
+  </div>
+
+  <!-- ============ PROSES ============ -->
+  <div class="screen" id="screen-processing">
+    <div class="spacer"></div>
+    <div class="status-icon success">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M4 12.5L9.5 18L20 6" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <h2 class="title">Foto Diterima</h2>
+    <p class="subtitle">Memproses presensi…</p>
+
+    <div class="checklist">
+      <div class="check-item" data-step="1"><span class="dot"></span><span>Memeriksa identitas</span></div>
+      <div class="check-item" data-step="2"><span class="dot"></span><span>Memeriksa jaringan</span></div>
+      <div class="check-item" data-step="3"><span class="dot"></span><span>Menyimpan foto</span></div>
+      <div class="check-item" data-step="4"><span class="dot"></span><span>Mencatat waktu</span></div>
+    </div>
+    <div class="spacer"></div>
+  </div>
+
+  <!-- ============ SUKSES ============ -->
+  <div class="screen" id="screen-success">
+    <div class="spacer"></div>
+    <div class="status-icon success">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M4 12.5L9.5 18L20 6" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <h2 class="title">Presensi Berhasil</h2>
+    <p class="subtitle">Selamat bekerja, <span id="success-nama">–</span>!</p>
+
+    <div class="summary">
+      <div class="dt" id="success-datetime">–</div>
+      <div class="status-line"><span class="dot"></span>HADIR</div>
+    </div>
+    <p class="subtitle" style="margin-top:0;">Presensi telah tercatat.</p>
+
+    <div class="spacer"></div>
+    <button class="btn btn-primary" id="btn-done">Selesai</button>
+  </div>
+
+  <!-- ============ GAGAL SUBMIT ============ -->
+  <div class="screen" id="screen-submit-error">
+    <div class="spacer"></div>
+    <div class="status-icon error">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M6 6L18 18M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+    </div>
+    <h2 class="title">Presensi Gagal</h2>
+    <p class="subtitle" id="submit-error-message">Terjadi kesalahan.</p>
+    <div class="spacer"></div>
+    <button class="btn btn-primary" id="btn-retry">Coba Lagi</button>
+  </div>
+
+  <!-- ============ SELESAI ============ -->
+  <div class="screen" id="screen-done">
+    <div class="spacer"></div>
+    <p class="subtitle">Anda bisa menutup halaman ini sekarang.</p>
+    <div class="spacer"></div>
+  </div>
+
+</div>
+
+<script>
+  // GANTI dengan URL Web App Apps Script kamu setelah deploy
+  const API_URL = 'https://script.google.com/macros/s/GANTI_DENGAN_DEPLOYMENT_ID/exec';
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const staffId = urlParams.get('staff') || '';
+
+  let clientIp = '';
+  let staffData = null;
+  let photoBase64 = null;
+  let stream = null;
+
+  function show(id){
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  function fmtDate(d){
+    return new Intl.DateTimeFormat('id-ID', { day:'numeric', month:'long', year:'numeric', timeZone:'Asia/Jakarta' }).format(d);
+  }
+  function fmtTime(d){
+    return new Intl.DateTimeFormat('id-ID', { hour:'2-digit', minute:'2-digit', hour12:false, timeZone:'Asia/Jakarta' }).format(d) + ' WIB';
+  }
+
+  async function init(){
+    if (!staffId){
+      document.getElementById('invalid-message').textContent = 'Tautan tidak lengkap. Scan QR Code presensi Anda, bukan membuka tautan ini secara manual.';
+      show('screen-invalid');
+      return;
+    }
+
+    // Ambil IP publik & validasi staff secara paralel
+    const [, staffResultSettled] = await Promise.allSettled([ fetchClientIp(), fetchStaff() ]);
+
+    if (staffResultSettled.status === 'rejected' || !staffResultSettled.value || !staffResultSettled.value.success){
+      document.getElementById('invalid-message').textContent =
+        (staffResultSettled.value && staffResultSettled.value.message) || 'Gagal memverifikasi QR Code.';
+      show('screen-invalid');
+      return;
+    }
+
+    staffData = staffResultSettled.value;
+
+    document.getElementById('session-date').textContent = fmtDate(new Date());
+    document.getElementById('session-time').textContent = fmtTime(new Date());
+    show('screen-session');
+
+    checkNetwork();
+  }
+
+  async function fetchClientIp(){
+    try {
+      const res = await fetch('https://api.ipify.org?format=json');
+      const data = await res.json();
+      clientIp = data.ip;
+    } catch (err) {
+      clientIp = '';
+    }
+  }
+
+  async function fetchStaff(){
+    const url = API_URL + '?action=getStaff&staffId=' + encodeURIComponent(staffId);
+    const res = await fetch(url);
+    return res.json();
+  }
+
+  async function checkNetwork(){
+    const dot = document.getElementById('net-dot');
+    const text = document.getElementById('net-text');
+    const row = document.getElementById('net-row');
+    const btnStart = document.getElementById('btn-start');
+
+    try {
+      const url = API_URL + '?action=checkNetwork&ip=' + encodeURIComponent(clientIp);
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (data.connected){
+        dot.className = 'net-dot ok';
+        text.textContent = 'Terhubung ke Wi-Fi kantor';
+        row.classList.remove('bad');
+        btnStart.disabled = false;
+      } else {
+        dot.className = 'net-dot bad';
+        text.textContent = 'Tidak terhubung ke jaringan kantor';
+        row.classList.add('bad');
+        btnStart.disabled = true;
+      }
+    } catch (err) {
+      dot.className = 'net-dot bad';
+      text.textContent = 'Gagal memeriksa jaringan';
+      btnStart.disabled = true;
+    }
+  }
+
+  document.getElementById('btn-start').addEventListener('click', () => {
+    document.getElementById('confirm-nama').textContent = staffData.nama;
+    document.getElementById('confirm-staff-id').textContent = staffData.staff_id;
+    show('screen-confirm');
+  });
+
+  document.getElementById('btn-to-camera').addEventListener('click', () => {
+    show('screen-camera');
+    startCamera();
+  });
+
+  document.getElementById('btn-back-camera').addEventListener('click', () => {
+    stopCamera();
+    show('screen-confirm');
+  });
+
+  async function startCamera(){
+    const camStatus = document.getElementById('cam-status');
+    camStatus.textContent = '';
+
+    if (!window.isSecureContext){
+      camStatus.textContent = 'Halaman harus diakses via HTTPS.';
+      return;
+    }
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+      document.getElementById('video').srcObject = stream;
+    } catch (err){
+      camStatus.textContent = 'Tidak bisa mengakses kamera: ' + err.message;
+    }
+  }
+
+  function stopCamera(){
+    if (stream){
+      stream.getTracks().forEach(t => t.stop());
+      stream = null;
+    }
+  }
+
+  document.getElementById('btn-capture').addEventListener('click', () => {
+    const video = document.getElementById('video');
+    const canvas = document.createElement('canvas');
+
+    const maxWidth = 640;
+    let width = video.videoWidth, height = video.videoHeight;
+    if (width > maxWidth){ height = height * (maxWidth / width); width = maxWidth; }
+
+    canvas.width = width; canvas.height = height;
+    canvas.getContext('2d').drawImage(video, 0, 0, width, height);
+
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+    photoBase64 = dataUrl.split(',')[1];
+
+    document.getElementById('photo-preview').src = dataUrl;
+    stopCamera();
+    show('screen-preview');
+  });
+
+  document.getElementById('btn-retake').addEventListener('click', () => {
+    photoBase64 = null;
+    show('screen-camera');
+    startCamera();
+  });
+
+  document.getElementById('btn-use-photo').addEventListener('click', submitAttendance);
+  document.getElementById('btn-retry').addEventListener('click', () => show('screen-preview'));
+
+  document.getElementById('btn-done').addEventListener('click', () => show('screen-done'));
+
+  function markStep(n){
+    const item = document.querySelector('.check-item[data-step="' + n + '"]');
+    item.classList.add('done');
+    item.querySelector('.dot').innerHTML = '<svg viewBox="0 0 24 24" fill="none"><path d="M4 12.5L9.5 18L20 6" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  }
+  function resetChecklist(){
+    document.querySelectorAll('.check-item').forEach(item => {
+      item.classList.remove('done');
+      item.querySelector('.dot').innerHTML = '';
+    });
+  }
+
+  async function submitAttendance(){
+    resetChecklist();
+    show('screen-processing');
+
+    const submitPromise = fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // hindari CORS preflight
+      body: JSON.stringify({
+        action: 'submitAttendance',
+        staffId: staffId,
+        ip: clientIp,
+        photoBase64: photoBase64
+      })
+    }).then(r => r.json()).catch(() => ({ success:false, message:'Gagal menghubungi server.' }));
+
+    // Animasi checklist berjalan sambil menunggu respons server
+    await wait(450); markStep(1);
+    await wait(450); markStep(2);
+
+    const result = await submitPromise;
+
+    markStep(3);
+    await wait(300);
+    markStep(4);
+    await wait(400);
+
+    if (result.success){
+      document.getElementById('success-nama').textContent = result.data.nama;
+      const ts = new Date(result.data.timestamp);
+      document.getElementById('success-datetime').textContent = fmtDate(ts) + ' · ' + fmtTime(ts);
+      show('screen-success');
+    } else {
+      document.getElementById('submit-error-message').textContent = result.message || 'Terjadi kesalahan saat mengirim presensi.';
+      show('screen-submit-error');
+    }
+  }
+
+  function wait(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+  init();
+</script>
+
+</body>
+</html>
