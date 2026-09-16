@@ -1,8 +1,3 @@
-<!-- index.html — deploy ke GitHub Pages (atau Netlify/Firebase Hosting).
-     JANGAN diupload ke Apps Script — halaman ini harus di origin HTTPS asli
-     supaya kamera bisa diakses browser.
-
-     QR tiap staff berisi URL ini + ?staff=STF001 (permanen, bisa dicetak & dipakai ulang) -->
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -186,6 +181,8 @@
     font-weight:700; letter-spacing:0.02em; font-size:14px; color: var(--success);
   }
   .summary .status-line .dot{ width:8px; height:8px; border-radius:50%; background: var(--success); }
+  .summary .status-line.late{ color: var(--error); }
+  .summary .status-line.late .dot{ background: var(--error); }
 </style>
 </head>
 <body>
@@ -308,12 +305,12 @@
     <div class="status-icon success">
       <svg viewBox="0 0 24 24" fill="none"><path d="M4 12.5L9.5 18L20 6" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </div>
-    <h2 class="title">Presensi Berhasil</h2>
+    <h2 class="title" id="success-jenis">Presensi Berhasil</h2>
     <p class="subtitle">Selamat bekerja, <span id="success-nama">–</span>!</p>
 
     <div class="summary">
       <div class="dt" id="success-datetime">–</div>
-      <div class="status-line"><span class="dot"></span>HADIR</div>
+      <div class="status-line" id="success-status-line"><span class="dot"></span>TEPAT WAKTU</div>
     </div>
     <p class="subtitle" style="margin-top:0;">Presensi telah tercatat.</p>
 
@@ -344,7 +341,7 @@
 
 <script>
   // GANTI dengan URL Web App Apps Script kamu setelah deploy
-const API_URL = 'https://script.google.com/macros/s/AKfycbxJhqyYkNavx2MvPs7FOyfOYzv0UcZdKc8JGpkHXSWhBtQJEsUDuB9DO1mOluctb8hVtQ/exec';
+  const API_URL = 'https://script.google.com/macros/s/GANTI_DENGAN_DEPLOYMENT_ID/exec';
 
   const urlParams = new URLSearchParams(window.location.search);
   const staffId = urlParams.get('staff') || '';
@@ -366,6 +363,20 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbxJhqyYkNavx2MvPs7FOyfO
     return new Intl.DateTimeFormat('id-ID', { hour:'2-digit', minute:'2-digit', hour12:false, timeZone:'Asia/Jakarta' }).format(d) + ' WIB';
   }
 
+  // Mulai ambil IP publik SEKARANG, di background — tidak menunda layar loading.
+  // checkNetwork() nanti tinggal "nebeng" hasil promise ini kalau sudah selesai,
+  // atau menunggunya kalau belum (tanpa menahan validasi staff).
+  const ipPromise = fetchClientIp();
+
+  // Bungkus fetch dengan batas waktu supaya tidak macet tanpa henti kalau
+  // salah satu server lambat merespons (mis. cold start Apps Script, atau
+  // api.ipify.org diblokir firewall kantor).
+  function fetchWithTimeout(url, timeoutMs){
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timer));
+  }
+
   async function init(){
     if (!staffId){
       document.getElementById('invalid-message').textContent = 'Tautan tidak lengkap. Scan QR Code presensi Anda, bukan membuka tautan ini secara manual.';
@@ -373,17 +384,24 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbxJhqyYkNavx2MvPs7FOyfO
       return;
     }
 
-    // Ambil IP publik & validasi staff secara paralel
-    const [, staffResultSettled] = await Promise.allSettled([ fetchClientIp(), fetchStaff() ]);
-
-    if (staffResultSettled.status === 'rejected' || !staffResultSettled.value || !staffResultSettled.value.success){
-      document.getElementById('invalid-message').textContent =
-        (staffResultSettled.value && staffResultSettled.value.message) || 'Gagal memverifikasi QR Code.';
+    // Loading sekarang HANYA menunggu validasi staff, bukan IP.
+    let staffResult;
+    try {
+      staffResult = await fetchStaff();
+    } catch (err) {
+      document.getElementById('invalid-message').textContent = 'Gagal menghubungi server. Cek koneksi internet lalu buka ulang QR Code.';
       show('screen-invalid');
       return;
     }
 
-    staffData = staffResultSettled.value;
+    if (!staffResult || !staffResult.success){
+      document.getElementById('invalid-message').textContent =
+        (staffResult && staffResult.message) || 'Gagal memverifikasi QR Code.';
+      show('screen-invalid');
+      return;
+    }
+
+    staffData = staffResult;
 
     document.getElementById('session-date').textContent = fmtDate(new Date());
     document.getElementById('session-time').textContent = fmtTime(new Date());
@@ -394,7 +412,7 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbxJhqyYkNavx2MvPs7FOyfO
 
   async function fetchClientIp(){
     try {
-      const res = await fetch('https://api.ipify.org?format=json');
+      const res = await fetchWithTimeout('https://api.ipify.org?format=json', 5000);
       const data = await res.json();
       clientIp = data.ip;
     } catch (err) {
@@ -404,7 +422,7 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbxJhqyYkNavx2MvPs7FOyfO
 
   async function fetchStaff(){
     const url = API_URL + '?action=getStaff&staffId=' + encodeURIComponent(staffId);
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url, 12000); // Apps Script cold start bisa beberapa detik
     return res.json();
   }
 
@@ -414,9 +432,11 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbxJhqyYkNavx2MvPs7FOyfO
     const row = document.getElementById('net-row');
     const btnStart = document.getElementById('btn-start');
 
+    await ipPromise; // tunggu IP selesai diambil (kalau belum) tepat di sini, bukan di loading screen
+
     try {
       const url = API_URL + '?action=checkNetwork&ip=' + encodeURIComponent(clientIp);
-      const res = await fetch(url);
+      const res = await fetchWithTimeout(url, 12000);
       const data = await res.json();
 
       if (data.connected){
@@ -522,6 +542,8 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbxJhqyYkNavx2MvPs7FOyfO
     resetChecklist();
     show('screen-processing');
 
+    await ipPromise; // pastikan IP sudah siap sebelum dikirim
+
     const submitPromise = fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // hindari CORS preflight
@@ -546,8 +568,16 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbxJhqyYkNavx2MvPs7FOyfO
 
     if (result.success){
       document.getElementById('success-nama').textContent = result.data.nama;
+      document.getElementById('success-jenis').textContent = result.data.jenis_label || 'Presensi Berhasil';
+
       const ts = new Date(result.data.timestamp);
       document.getElementById('success-datetime').textContent = fmtDate(ts) + ' · ' + fmtTime(ts);
+
+      const statusLine = document.getElementById('success-status-line');
+      const isLate = result.data.keterangan === 'TELAT';
+      statusLine.classList.toggle('late', isLate);
+      statusLine.innerHTML = '<span class="dot"></span>' + (result.data.keterangan || 'TEPAT WAKTU');
+
       show('screen-success');
     } else {
       document.getElementById('submit-error-message').textContent = result.message || 'Terjadi kesalahan saat mengirim presensi.';
