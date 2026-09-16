@@ -1,3 +1,8 @@
+<!-- index.html — deploy ke GitHub Pages (atau Netlify/Firebase Hosting).
+     JANGAN diupload ke Apps Script — halaman ini harus di origin HTTPS asli
+     supaya kamera bisa diakses browser.
+
+     QR tiap staff berisi URL ini + ?staff=STF001 (permanen, bisa dicetak & dipakai ulang) -->
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -341,7 +346,7 @@
 
 <script>
   // GANTI dengan URL Web App Apps Script kamu setelah deploy
-  const API_URL = 'https://script.google.com/macros/s/AKfycbzjrk-ZZ6MJvAyR65Egu9DTBjlgvLZLtQdlJMca_JuukQEQwO_m7JA_pAz0pIa53Me0fg/exec';
+  const API_URL = 'https://script.google.com/macros/s/AKfycbzMQMFIKNikrYZ-HbuNOqWGxKn8SXDEdZGHX_cFixT3w3KKZdsliU_Vllrz5I0hunG44w/exec';
 
   const urlParams = new URLSearchParams(window.location.search);
   const staffId = urlParams.get('staff') || '';
@@ -374,7 +379,7 @@
   function fetchWithTimeout(url, timeoutMs){
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
-    return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timer));
+    return fetch(url, { signal: controller.signal, cache: 'no-store' }).finally(() => clearTimeout(timer));
   }
 
   async function init(){
@@ -546,6 +551,7 @@
 
     const submitPromise = fetch(API_URL, {
       method: 'POST',
+      cache: 'no-store',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // hindari CORS preflight
       body: JSON.stringify({
         action: 'submitAttendance',
