@@ -11,24 +11,31 @@
 <title>Presensi Staff</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
 <style>
+  /* Palet formal: merah + navy, latar netral. Font Poppins. */
   :root{
-    --bg: #F4F5F2;
+    --bg: #F4F5F7;
     --surface: #FFFFFF;
-    --ink: #17241D;
-    --ink-muted: #6B776E;
-    --line: #E4E7E1;
-    --primary: #1F5C4C;
-    --primary-dark: #163F34;
-    --primary-tint: #E7F0EC;
-    --success: #2F8F5B;
-    --success-tint: #E9F6EE;
-    --error: #C1443C;
-    --error-tint: #FBEBEA;
+    --cream-soft: #F7F1EF;
+    --ink: #2B2A40;
+    --ink-muted: #6E6C82;
+    --line: #E2E2E9;
+    --red: #911721;
+    --red-dark: #711018;
+    --navy: #2B2A40;
+    --navy-soft: #3D3C57;
+    --navy-tint: #E4E3EA;
+    --primary: #911721;
+    --primary-dark: #711018;
+    --success: #2B2A40;
+    --success-tint: #E4E3EA;
+    --error: #911721;
+    --error-tint: #F6E3E1;
     --radius-lg: 22px;
     --radius-md: 14px;
+    --font-display: 'Poppins', system-ui, sans-serif;
   }
 
   *{ box-sizing: border-box; }
@@ -37,7 +44,7 @@
     margin:0; padding:0; min-height:100%;
     background: var(--bg);
     color: var(--ink);
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Poppins', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
 
@@ -50,10 +57,12 @@
     width:100%; max-width: 400px;
     background: var(--surface);
     border-radius: var(--radius-lg);
-    box-shadow: 0 1px 2px rgba(23,36,29,0.04), 0 12px 32px rgba(23,36,29,0.08);
+    box-shadow: 0 1px 2px rgba(43,42,64,0.06), 0 16px 36px rgba(43,42,64,0.14);
     overflow:hidden;
     min-height: 560px;
     display:flex; flex-direction:column;
+    position:relative;
+    border-top: 5px solid var(--red);
   }
 
   .topbar{
@@ -66,8 +75,8 @@
   }
   .topbar button:focus-visible{ outline:2px solid var(--primary); }
   .topbar h1{
-    font-size:15px; font-weight:600; letter-spacing:0.01em; margin:0;
-    color: var(--ink-muted);
+    font-family: var(--font-display); font-size:14px; font-weight:600;
+    letter-spacing:0.04em; margin:0; color: var(--navy); text-transform:uppercase;
   }
 
   .screen{
@@ -78,9 +87,9 @@
   }
   .screen.active{ display:flex; }
 
-  /* ── Ikon status bulat ───────────────────────────────── */
+  /* ── Ikon status bulat ──────────────────── */
   .status-icon{
-    width:76px; height:76px; border-radius:50%;
+    width:78px; height:78px; border-radius:50%;
     display:flex; align-items:center; justify-content:center;
     margin: 8px auto 20px;
   }
@@ -89,8 +98,9 @@
   .status-icon svg{ width:34px; height:34px; }
 
   h2.title{
-    text-align:center; font-size:20px; font-weight:700;
-    margin: 0 0 6px; letter-spacing: -0.01em;
+    font-family: var(--font-display);
+    text-align:center; font-size:24px; font-weight:800;
+    margin: 0 0 8px; letter-spacing: 0.02em; color: var(--ink);
   }
   p.subtitle{
     text-align:center; color: var(--ink-muted); font-size:14.5px;
@@ -99,22 +109,23 @@
 
   /* ── Kartu info sesi ─────────────────────────────────── */
   .info-card{
-    background: var(--bg); border-radius: var(--radius-md);
+    background: var(--cream-soft); border-radius: var(--radius-md);
     padding: 16px 18px; margin-bottom: 14px;
     display:flex; align-items:center; gap:12px;
-    font-size: 14.5px;
+    font-size: 14.5px; border:1px solid var(--line);
   }
   .info-card .ic{ font-size:18px; width:22px; text-align:center; }
 
   .net-row{
     display:flex; align-items:center; gap:10px;
     padding: 14px 18px; border-radius: var(--radius-md);
-    background: var(--bg); font-size:14.5px; margin-bottom: 8px;
+    background: var(--cream-soft); font-size:14.5px; margin-bottom: 8px;
+    border:1px solid var(--line);
   }
   .net-dot{ width:9px; height:9px; border-radius:50%; background: var(--ink-muted); flex-shrink:0; }
-  .net-dot.ok{ background: var(--success); }
-  .net-dot.bad{ background: var(--error); }
-  .net-row.bad{ color: var(--error); }
+  .net-dot.ok{ background: var(--navy); }
+  .net-dot.bad{ background: var(--red); }
+  .net-row.bad{ color: var(--red); border-color: rgba(145,23,33,0.3); }
 
   .spacer{ flex:1; }
 
@@ -127,24 +138,29 @@
   }
   .btn:active{ transform: scale(0.985); }
   .btn:disabled{ opacity:0.45; cursor:not-allowed; }
-  .btn-primary{ background: var(--primary); color:#fff; }
-  .btn-primary:hover:not(:disabled){ background: var(--primary-dark); }
-  .btn-ghost{ background: var(--bg); color: var(--ink); margin-top:10px; }
+  .btn-primary{ background: var(--red); color: #FFFFFF; letter-spacing:0.02em; }
+  .btn-primary:hover:not(:disabled){ background: var(--red-dark); }
+  .btn-ghost{ background: var(--navy-tint); color: var(--ink); margin-top:10px; }
   .btn-row{ display:flex; gap:10px; }
   .btn-row .btn{ flex:1; }
 
   /* ── Identitas staff ─────────────────────────────────── */
   .identity-card{
-    background: var(--primary-tint); border-radius: var(--radius-md);
-    padding: 22px; text-align:center; margin-bottom: 24px;
+    background: var(--navy); border-radius: var(--radius-md);
+    padding: 24px; text-align:center; margin-bottom: 24px;
+    border-bottom: 3px solid var(--red);
   }
-  .identity-card .nama{ font-size:21px; font-weight:700; color: var(--primary-dark); }
-  .identity-card .staff-id{ font-size:13.5px; color: var(--ink-muted); margin-top:4px; }
+  .identity-card .nama{
+    font-family: var(--font-display); font-size:22px; font-weight:700;
+    color: #FFFFFF; letter-spacing:0.01em;
+  }
+  .identity-card .staff-id{ font-size:13px; color: rgba(255,255,255,0.65); margin-top:6px; }
 
   /* ── Kamera ──────────────────────────────────────────── */
   .cam-wrap{
     position:relative; border-radius: var(--radius-md); overflow:hidden;
-    background:#0E1712; aspect-ratio: 3/4; margin-bottom:16px;
+    background: var(--navy); aspect-ratio: 3/4; margin-bottom:16px;
+    border: 2px solid var(--ink);
   }
   .cam-wrap video, .cam-wrap img, .cam-wrap canvas{
     width:100%; height:100%; object-fit:cover; display:block;
@@ -153,8 +169,8 @@
 
   .shutter{
     width:68px; height:68px; border-radius:50%;
-    border: 4px solid var(--surface); background: var(--primary);
-    box-shadow: 0 0 0 2px var(--primary);
+    border: 4px solid var(--surface); background: var(--red);
+    box-shadow: 0 0 0 2px var(--red);
     margin: 4px auto 0; cursor:pointer; display:flex;
     align-items:center; justify-content:center;
   }
@@ -172,27 +188,29 @@
     transition: all .25s ease;
   }
   .check-item.done{ color: var(--ink); }
-  .check-item.done .dot{ background: var(--success); border-color: var(--success); }
+  .check-item.done .dot{ background: var(--navy); border-color: var(--navy); }
   .check-item.done .dot svg{ width:12px; height:12px; }
 
   /* ── Ringkasan sukses ────────────────────────────────── */
   .summary{
-    background: var(--bg); border-radius: var(--radius-md);
-    padding: 18px; margin: 20px 0; text-align:center;
+    background: var(--cream-soft); border-radius: var(--radius-md);
+    padding: 18px; margin: 20px 0; text-align:center; border:1px solid var(--line);
   }
   .summary .dt{ font-size:14.5px; color: var(--ink-muted); }
   .summary .status-line{
     margin-top:12px; display:flex; align-items:center; justify-content:center; gap:8px;
-    font-weight:700; letter-spacing:0.02em; font-size:14px; color: var(--success);
+    font-weight:700; letter-spacing:0.06em; font-size:13.5px; color: var(--navy);
+    text-transform: uppercase;
   }
-  .summary .status-line .dot{ width:8px; height:8px; border-radius:50%; background: var(--success); }
-  .summary .status-line.late{ color: var(--error); }
-  .summary .status-line.late .dot{ background: var(--error); }
+  .summary .status-line .dot{ width:8px; height:8px; border-radius:50%; background: var(--navy); }
+  .summary .status-line.late{ color: var(--red); }
+  .summary .status-line.late .dot{ background: var(--red); }
 </style>
 </head>
 <body>
 
 <div class="app" id="app">
+
 
   <!-- ============ LOADING ============ -->
   <div class="screen active" id="screen-loading">
@@ -311,7 +329,7 @@
       <svg viewBox="0 0 24 24" fill="none"><path d="M4 12.5L9.5 18L20 6" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </div>
     <h2 class="title" id="success-jenis">Presensi Berhasil</h2>
-    <p class="subtitle">Selamat bekerja, <span id="success-nama">–</span>!</p>
+    <p class="subtitle" id="success-greeting">Selamat bekerja, <span id="success-nama">–</span>!</p>
 
     <div class="summary">
       <div class="dt" id="success-datetime">–</div>
@@ -346,7 +364,7 @@
 
 <script>
   // GANTI dengan URL Web App Apps Script kamu setelah deploy
-  const API_URL = 'https://script.google.com/macros/s/AKfycbzMQMFIKNikrYZ-HbuNOqWGxKn8SXDEdZGHX_cFixT3w3KKZdsliU_Vllrz5I0hunG44w/exec';
+  const API_URL = 'https://script.google.com/macros/s/GANTI_DENGAN_DEPLOYMENT_ID/exec';
 
   const urlParams = new URLSearchParams(window.location.search);
   const staffId = urlParams.get('staff') || '';
@@ -446,18 +464,18 @@
 
       if (data.connected){
         dot.className = 'net-dot ok';
-        text.textContent = 'Terhubung ke Wi-Fi kantor';
+        text.textContent = 'Terhubung ke Wi-Fi kantor (IP: ' + (clientIp || '-') + ')';
         row.classList.remove('bad');
         btnStart.disabled = false;
       } else {
         dot.className = 'net-dot bad';
-        text.textContent = 'Tidak terhubung ke jaringan kantor';
+        text.textContent = 'Tidak terhubung. IP terdeteksi: ' + (clientIp || 'gagal dibaca');
         row.classList.add('bad');
         btnStart.disabled = true;
       }
     } catch (err) {
       dot.className = 'net-dot bad';
-      text.textContent = 'Gagal memeriksa jaringan';
+      text.textContent = 'Gagal memeriksa jaringan (IP: ' + (clientIp || '-') + ')';
       btnStart.disabled = true;
     }
   }
@@ -573,15 +591,27 @@
     await wait(400);
 
     if (result.success){
-      document.getElementById('success-nama').textContent = result.data.nama;
+      const GREETINGS = {
+        PAGI: 'Selamat bekerja,',
+        ISTIRAHAT_KELUAR: 'Selamat istirahat,',
+        ISTIRAHAT_MASUK: 'Selamat bekerja kembali,',
+        PULANG: 'Sampai jumpa besok,',
+        LEMBUR_MASUK: 'Semangat lemburnya,',
+        LEMBUR_KELUAR: 'Terima kasih atas lemburnya,'
+      };
+      const greeting = GREETINGS[result.data.jenis] || 'Selamat bekerja,';
+
+      document.getElementById('success-greeting').innerHTML = greeting + ' <span id="success-nama">' + result.data.nama + '</span>!';
       document.getElementById('success-jenis').textContent = result.data.jenis_label || 'Presensi Berhasil';
 
       const ts = new Date(result.data.timestamp);
       document.getElementById('success-datetime').textContent = fmtDate(ts) + ' · ' + fmtTime(ts);
 
       const statusLine = document.getElementById('success-status-line');
-      const isLate = result.data.keterangan === 'TELAT';
-      statusLine.classList.toggle('late', isLate);
+      // Cuma TELAT & LEBIH CEPAT yang dianggap pelanggaran (merah).
+      // TERCATAT (buat Lembur) netral aja, bukan pelanggaran.
+      const isViolation = result.data.keterangan === 'TELAT' || result.data.keterangan === 'LEBIH CEPAT';
+      statusLine.classList.toggle('late', isViolation);
       statusLine.innerHTML = '<span class="dot"></span>' + (result.data.keterangan || 'TEPAT WAKTU');
 
       show('screen-success');
